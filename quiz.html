@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7e1624">
+<title>Julefrokost-quiz · Idrætssamvirket Aarhus</title>
+<style>
+  :root {
+    --rod: #cf1321;
+    --brand: #7e1624;
+    --gron: #2d8c72;
+    --lys: #f5f3e6;
+    --bla: #527dba;
+    --gra-lys: #8596a0;
+    --gra-mork: #4e6070;
+    --hvid: #ffffff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: var(--lys);
+    color: var(--gra-mork);
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    overflow-x: hidden;
+  }
+  .grafik {
+    position: fixed; right: -35%; bottom: -8%;
+    width: 150%; max-width: 900px; opacity: .13;
+    pointer-events: none; z-index: 0;
+  }
+  .app {
+    position: relative; z-index: 1;
+    max-width: 480px; margin: 0 auto;
+    min-height: 100vh; min-height: 100dvh;
+    padding: 18px 20px 28px;
+    display: flex; flex-direction: column;
+  }
+  .logo { display: block; width: 170px; height: auto; margin: 0 0 6px -8px; }
+  .screen { display: none; flex: 1; flex-direction: column; }
+  .screen.aktiv { display: flex; }
+
+  h1, h2 { color: var(--brand); margin: 0; letter-spacing: -.02em; line-height: 1.05; }
+  h1 { font-size: 46px; font-weight: 900; margin-top: 28px; }
+  h2 { font-size: 26px; font-weight: 800; line-height: 1.2; }
+  p { line-height: 1.5; font-size: 17px; margin: 14px 0 0; }
+
+  /* Start */
+  .navn-felt { margin-top: 28px; }
+  .navn-felt label { display: block; font-weight: 700; margin-bottom: 8px; color: var(--brand); }
+  .navn-felt input {
+    width: 100%; font: inherit; font-size: 18px; padding: 14px 16px;
+    border: 2px solid var(--gra-lys); border-radius: 12px; background: var(--hvid); color: var(--gra-mork);
+  }
+  .navn-felt input:focus { outline: none; border-color: var(--bla); }
+  .knap {
+    font: inherit; font-size: 19px; font-weight: 800;
+    border: 0; border-radius: 14px; padding: 17px 20px; width: 100%;
+    background: var(--rod); color: #fff; cursor: pointer;
+    box-shadow: 0 4px 0 var(--brand);
+    transition: transform .08s, box-shadow .08s;
+  }
+  .knap:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--brand); }
+  .knap:focus-visible, .svar:focus-visible { outline: 3px solid var(--bla); outline-offset: 2px; }
+  .skub { margin-top: auto; padding-top: 28px; }
+
+  /* Spørgsmål */
+  .top { display: flex; align-items: center; gap: 12px; margin: 10px 0 22px; }
+  .bar { flex: 1; height: 10px; background: rgba(78,96,112,.2); border-radius: 99px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--gron); border-radius: 99px; transition: width .35s ease; }
+  .tael { font-weight: 800; color: var(--gra-mork); font-size: 15px; white-space: nowrap; }
+  .point { font-weight: 800; color: var(--gron); font-size: 15px; white-space: nowrap; }
+
+  .svar-liste { display: grid; gap: 12px; margin-top: 26px; }
+  .svar {
+    font: inherit; font-size: 20px; font-weight: 700; text-align: left;
+    padding: 17px 18px; border-radius: 14px; cursor: pointer;
+    background: var(--hvid); color: var(--gra-mork);
+    border: 2px solid var(--gra-lys);
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .svar:active:not(:disabled) { background: #eaeef2; }
+  .svar:disabled { cursor: default; }
+  .svar.rigtig { background: var(--gron); border-color: var(--gron); color: #fff; }
+  .svar.forkert { background: var(--rod); border-color: var(--rod); color: #fff; }
+  .svar.dim { opacity: .45; }
+
+  /* Feedback */
+  .feedback {
+    display: none; margin-top: 22px; padding: 18px;
+    background: var(--hvid); border-radius: 16px; border: 2px solid var(--gra-lys);
+    text-align: center;
+  }
+  .feedback.vis { display: block; animation: pop .25s ease-out; }
+  .feedback.ok { border-color: var(--gron); }
+  .feedback.nej { border-color: var(--rod); }
+  @keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+  .dom { font-size: 26px; font-weight: 900; margin: 0; line-height: 1.15; }
+  .ok .dom { color: var(--gron); }
+  .nej .dom { color: var(--rod); }
+  .dom small { display: block; font-size: 18px; font-weight: 700; color: var(--gra-mork); margin-top: 4px; }
+
+  .portraet { position: relative; width: 150px; height: 150px; margin: 6px auto 12px; }
+  .portraet .foto {
+    width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+    background: var(--bla); border: 4px solid var(--hvid);
+    box-shadow: 0 0 0 3px var(--brand);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 64px; font-weight: 900;
+  }
+  .portraet .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .nissehue { position: absolute; top: -50px; left: 10px; width: 120px; height: auto; transform: rotate(-6deg); pointer-events: none; }
+  .naeste { margin-top: 16px; }
+
+  /* Resultat */
+  .score-kort {
+    margin-top: 22px; background: var(--brand); color: #fff;
+    border-radius: 22px; padding: 28px 20px; text-align: center;
+  }
+  .score-kort .hvem { font-size: 18px; font-weight: 700; opacity: .9; min-height: 24px; }
+  .score-kort .stor { font-size: 88px; font-weight: 900; line-height: 1; margin: 6px 0; letter-spacing: -.03em; }
+  .score-kort .stor span { font-size: 40px; opacity: .75; font-weight: 700; }
+  .score-kort .besked { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .prikker { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 18px; }
+  .prikker i { width: 14px; height: 14px; border-radius: 50%; background: var(--gron); border: 2px solid rgba(255,255,255,.9); }
+  .prikker i.x { background: var(--rod); }
+  .tip { text-align: center; font-size: 15px; color: var(--gra-mork); margin-top: 18px; }
+
+  canvas#konfetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feedback.vis { animation: none; }
+    .bar i { transition: none; }
+  }
+  @media (max-height: 700px) {
+    h1 { font-size: 38px; margin-top: 14px; }
+    .portraet { width: 120px; height: 120px; }
+    .nissehue { width: 96px; top: -40px; left: 8px; }
+  }
+</style>
+</head>
+<body>
+<img class="grafik" src="images/grafik.png" alt="">
+<canvas id="konfetti"></canvas>
+
+<div class="app">
+  <img class="logo" src="images/logo.svg" alt="Idrætssamvirket Aarhus">
+
+  <!-- START -->
+  <section class="screen aktiv" id="start">
+    <h1>Julefrokost-<br>quiz</h1>
+    <p>Hvor godt kender du dine kolleger? Svar på spørgsmålene og se, hvem der får flest rigtige.</p>
+    <div class="navn-felt">
+      <label for="navn">Dit navn</label>
+      <input id="navn" type="text" autocomplete="off" maxlength="24" placeholder="Så vi kan se, hvem der har scoret hvad">
+    </div>
+    <div class="skub"><button class="knap" id="startKnap">Start quizzen</button></div>
+  </section>
+
+  <!-- SPØRGSMÅL -->
+  <section class="screen" id="quiz">
+    <div class="top">
+      <div class="tael" id="tael"></div>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="point" id="point"></div>
+    </div>
+    <h2 id="spoergsmaal"></h2>
+    <div class="svar-liste" id="svar"></div>
+
+    <div class="feedback" id="feedback" aria-live="polite">
+      <div class="portraet" id="portraet"></div>
+      <p class="dom" id="dom"></p>
+      <button class="knap naeste" id="naeste"></button>
+    </div>
+  </section>
+
+  <!-- RESULTAT -->
+  <section class="screen" id="resultat">
+    <div class="score-kort">
+      <div class="hvem" id="resNavn"></div>
+      <div class="stor"><b id="resScore"></b><span id="resAf"></span></div>
+      <div class="besked" id="resBesked"></div>
+      <div class="prikker" id="prikker"></div>
+    </div>
+    <p class="tip">Tag et screenshot af din score og send det til gruppen.</p>
+    <div class="skub"><button class="knap" id="igen">Prøv igen</button></div>
+  </section>
+</div>
+
+<script>
+/* ============================================================
+   SPØRGSMÅL – ret her.
+   Hvert spørgsmål har præcis 4 svarmuligheder fra NAVNE-listen.
+   "answer" skal være et af de 4 navne i "options".
+   ============================================================ */
+const QUESTIONS = [
+  { q: "Hvem har været medlem af Ry Klatreklub?", options: ["Nina", "Mie", "Maria", "Martin"], answer: "Mie" },
+  // { q: "Næste spørgsmål her?", options: ["Nina", "Jonas", "Thor", "Christian"], answer: "Thor" },
+];
+
+/* ============================================================
+   FOTOS – læg billederne i mappen images/ med disse filnavne
+   (.jpg, .jpeg, .png eller .webp virker alle).
+   ============================================================ */
+const NAVNE = ["Nina", "Mie", "Maria", "Martin", "Christian", "Jonas", "Thor"];
+const NISSEHUE_PAA = ["Martin"];
+const fotoFil = n => "images/" + n.toLowerCase();
+
+/* ---------- Validering (kun i konsollen) ---------- */
+QUESTIONS.forEach((k, i) => {
+  if (k.options.length !== 4) console.warn(`Spørgsmål ${i + 1}: skal have 4 svarmuligheder`);
+  if (!k.options.includes(k.answer)) console.warn(`Spørgsmål ${i + 1}: svaret findes ikke i options`);
+  k.options.forEach(o => { if (!NAVNE.includes(o)) console.warn(`Spørgsmål ${i + 1}: ukendt navn "${o}"`); });
+});
+
+/* ---------- Hjælpere ---------- */
+const $ = id => document.getElementById(id);
+const vis = id => {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("aktiv"));
+  $(id).classList.add("aktiv");
+  window.scrollTo(0, 0);
+};
+
+const NISSEHUE_SVG = `
+<svg class="nissehue" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M14 78 C 26 30, 60 6, 104 14 C 96 22, 98 34, 100 50 C 102 64, 106 72, 108 80 Z" fill="#cf1321"/>
+  <path d="M14 78 C 26 30, 60 6, 104 14 C 90 36, 60 62, 14 78 Z" fill="#7e1624" opacity=".25"/>
+  <rect x="4" y="72" width="112" height="24" rx="12" fill="#f5f3e6" stroke="#e1ddc8" stroke-width="2"/>
+  <circle cx="104" cy="14" r="12" fill="#f5f3e6" stroke="#e1ddc8" stroke-width="2"/>
+</svg>`;
+
+function portraet(navn) {
+  const wrap = document.createElement("div");
+  const foto = document.createElement("div");
+  foto.className = "foto";
+  const endelser = ["jpg", "jpeg", "png", "webp"];
+  let i = 0;
+  const img = new Image();
+  img.alt = navn;
+  img.onerror = () => {
+    i++;
+    if (i < endelser.length) img.src = `${fotoFil(navn)}.${endelser[i]}`;
+    else { foto.textContent = navn[0]; }            // reserve: forbogstav
+  };
+  img.onload = () => { foto.textContent = ""; foto.appendChild(img); };
+  img.src = `${fotoFil(navn)}.${endelser[0]}`;
+  wrap.appendChild(foto);
+  let html = wrap.innerHTML;
+  const el = document.createElement("div");
+  el.appendChild(foto);
+  if (NISSEHUE_PAA.includes(navn)) el.insertAdjacentHTML("beforeend", NISSEHUE_SVG);
+  return el;
+}
+
+/* ---------- Konfetti ---------- */
+const cv = $("konfetti"), cx = cv.getContext("2d");
+let partikler = [], kører = false;
+function størrelse() { cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio; }
+addEventListener("resize", størrelse); størrelse();
+
+function konfetti() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const farver = ["#cf1321", "#7e1624", "#2d8c72", "#527dba", "#f5f3e6", "#ffffff"];
+  const d = devicePixelRatio;
+  for (let i = 0; i < 140; i++) {
+    partikler.push({
+      x: cv.width / 2 + (Math.random() - .5) * 120 * d,
+      y: cv.height * .45,
+      vx: (Math.random() - .5) * 16 * d,
+      vy: (-Math.random() * 15 - 4) * d,
+      g: .42 * d,
+      s: (5 + Math.random() * 7) * d,
+      r: Math.random() * 6.28,
+      vr: (Math.random() - .5) * .35,
+      c: farver[(Math.random() * farver.length) | 0],
+      liv: 0
+    });
+  }
+  if (!kører) { kører = true; requestAnimationFrame(tegn); }
+}
+function tegn() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  partikler.forEach(p => {
+    p.vy += p.g; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.liv++;
+    cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r);
+    cx.fillStyle = p.c; cx.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * .6);
+    cx.restore();
+  });
+  partikler = partikler.filter(p => p.y < cv.height + 40 && p.liv < 200);
+  if (partikler.length) requestAnimationFrame(tegn);
+  else { kører = false; cx.clearRect(0, 0, cv.width, cv.height); }
+}
+
+/* ---------- Quiz-logik ---------- */
+let nr = 0, score = 0, resultater = [], besvaret = false, brugerNavn = "";
+
+$("startKnap").onclick = () => {
+  brugerNavn = $("navn").value.trim();
+  nr = 0; score = 0; resultater = [];
+  vis("quiz");
+  visSpoergsmaal();
+};
+
+function visSpoergsmaal() {
+  const k = QUESTIONS[nr];
+  besvaret = false;
+  $("tael").textContent = `${nr + 1} / ${QUESTIONS.length}`;
+  $("point").textContent = `${score} point`;
+  $("bar").style.width = `${(nr / QUESTIONS.length) * 100}%`;
+  $("spoergsmaal").textContent = k.q;
+  $("feedback").className = "feedback";
+  $("svar").innerHTML = "";
+  k.options.forEach(navn => {
+    const b = document.createElement("button");
+    b.className = "svar";
+    b.textContent = navn;
+    b.onclick = () => svar(b, navn);
+    $("svar").appendChild(b);
+  });
+}
+
+function svar(knap, valgt) {
+  if (besvaret) return;
+  besvaret = true;
+  const k = QUESTIONS[nr];
+  const rigtigt = valgt === k.answer;
+  if (rigtigt) score++;
+  resultater.push(rigtigt);
+
+  document.querySelectorAll(".svar").forEach(b => {
+    b.disabled = true;
+    if (b.textContent === k.answer) b.classList.add("rigtig");
+    else if (b === knap) b.classList.add("forkert");
+    else b.classList.add("dim");
+  });
+
+  $("point").textContent = `${score} point`;
+  $("bar").style.width = `${((nr + 1) / QUESTIONS.length) * 100}%`;
+
+  const fb = $("feedback");
+  fb.className = "feedback vis " + (rigtigt ? "ok" : "nej");
+  $("portraet").replaceChildren(...portraet(k.answer).childNodes);
+  $("dom").innerHTML = rigtigt
+    ? "Rigtigt!"
+    : `Forkert!<small>Det rigtige svar var: ${k.answer}</small>`;
+  $("naeste").textContent = nr + 1 < QUESTIONS.length ? "Næste spørgsmål" : "Se din score";
+  if (rigtigt) konfetti();
+  setTimeout(() => fb.scrollIntoView({ behavior: "smooth", block: "end" }), 60);
+}
+
+$("naeste").onclick = () => {
+  nr++;
+  if (nr < QUESTIONS.length) { visSpoergsmaal(); window.scrollTo(0, 0); }
+  else visResultat();
+};
+
+function visResultat() {
+  const total = QUESTIONS.length;
+  $("resNavn").textContent = brugerNavn || "Din score";
+  $("resScore").textContent = score;
+  $("resAf").textContent = ` / ${total}`;
+  const pct = score / total;
+  $("resBesked").textContent =
+    pct === 1 ? "Perfekt! Du kender os alle." :
+    pct >= .7 ? "Flot klaret!" :
+    pct >= .4 ? "Ikke dårligt – men du skal nok lære os bedre at kende." :
+                "Tid til flere kaffepauser sammen.";
+  $("prikker").innerHTML = resultater.map(r => `<i class="${r ? "" : "x"}"></i>`).join("");
+  vis("resultat");
+  if (pct >= .7) setTimeout(konfetti, 250);
+}
+
+$("igen").onclick = () => { vis("start"); };
+</script>
+</body>
+</html>
