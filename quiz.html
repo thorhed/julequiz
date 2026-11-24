@@ -127,6 +127,19 @@
   .prikker i.x { background: var(--rod); }
   .tip { text-align: center; font-size: 15px; color: var(--gra-mork); margin-top: 18px; }
 
+
+  /* Resultat – screenshot-venligt */
+  .res .logo { width: 120px; margin-bottom: 0; }
+  .res .score-kort { margin-top: 12px; padding: 22px 16px; box-shadow: 0 0 0 4px var(--lys), 0 0 0 8px var(--rod); }
+  .res .score-kort .stor { font-size: 76px; }
+  .res .score-kort .besked { font-size: 18px; }
+  .score-kort .meta { margin-top: 16px; font-size: 14px; line-height: 1.55; opacity: .9; }
+  .score-kort .kode { font-weight: 800; letter-spacing: .08em; font-size: 16px; }
+  .opfordring { text-align: center; font-weight: 800; color: var(--brand); font-size: 18px; margin: 22px 0 0; }
+  .knapper { display: grid; gap: 10px; margin-top: auto; padding-top: 18px; }
+  .knap.sekundaer { background: var(--hvid); color: var(--brand); border: 2px solid var(--brand); box-shadow: none; }
+  .knap:disabled { opacity: .5; cursor: default; }
+
   canvas#konfetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -177,14 +190,18 @@
 
   <!-- RESULTAT -->
   <section class="screen" id="resultat">
-    <div class="score-kort">
+    <div class="score-kort" id="kort">
       <div class="hvem" id="resNavn"></div>
       <div class="stor"><b id="resScore"></b><span id="resAf"></span></div>
       <div class="besked" id="resBesked"></div>
       <div class="prikker" id="prikker"></div>
+      <div class="meta"><div id="resTid"></div><div class="kode" id="resKode"></div></div>
     </div>
-    <p class="tip">Tag et screenshot af din score og send det til gruppen.</p>
-    <div class="skub"><button class="knap" id="igen">Prøv igen</button></div>
+    <p class="opfordring">Tag et screenshot af din score som dokumentation.</p>
+    <div class="knapper">
+      <button class="knap sekundaer" id="gem">Gem som billede</button>
+      <button class="knap" id="igen" disabled>Prøv igen</button>
+    </div>
   </section>
 </div>
 
@@ -196,7 +213,7 @@
    ============================================================ */
 const QUESTIONS = [
   { q: "Hvem har været medlem af Ry Klatreklub?", options: ["Nina", "Mie", "Maria", "Martin"], answer: "Mie" },
-  { q: "Hvem tager altid det sidste stykke kage uden at spørge?", options: ["Martin", "Thor", "Nina", "Christian"], answer: "Martin" },
+  { q: "Hvem tager altid det sidste stykke kage uden at spørge?", options: ["Jonas", "Martin", "Nina", "Christian"], answer: "Martin" },
   { q: "Hvem har det mest rodede skrivebord?", options: ["Maria", "Martin", "Mie", "Thor"], answer: "Thor" },
   { q: "Hvem er som regel først på kontoret om morgenen?", options: ["Nina", "Jonas", "Christian", "Mie"], answer: "Christian" },
   // { q: "Næste spørgsmål her?", options: ["Nina", "Jonas", "Thor", "Christian"], answer: "Thor" },
@@ -222,6 +239,7 @@ const $ = id => document.getElementById(id);
 const vis = id => {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("aktiv"));
   $(id).classList.add("aktiv");
+  document.body.classList.toggle("res", id === "resultat");
   window.scrollTo(0, 0);
 };
 
@@ -358,23 +376,125 @@ $("naeste").onclick = () => {
   else visResultat();
 };
 
+let sidste = null, tid = null;
+
+function lavKode(tekst) {
+  let h = 2166136261;
+  for (const c of tekst) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36).toUpperCase().padStart(6, "0").slice(0, 5);
+}
+
 function visResultat() {
   const total = QUESTIONS.length;
-  $("resNavn").textContent = brugerNavn || "Din score";
-  $("resScore").textContent = score;
-  $("resAf").textContent = ` / ${total}`;
   const pct = score / total;
-  $("resBesked").textContent =
+  const besked =
     pct === 1 ? "Perfekt! Du kender os alle." :
     pct >= .7 ? "Flot klaret!" :
     pct >= .4 ? "Ikke dårligt – men du skal nok lære os bedre at kende." :
                 "Tid til flere kaffepauser sammen.";
+  const nu = new Date();
+  const stempel = nu.toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" })
+    + " kl. " + nu.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+  const navn = brugerNavn || "Din score";
+  const kode = "ISAA-" + lavKode([navn, score, total, stempel].join("|"));
+  sidste = { navn, score, total, besked, stempel, kode, resultater: resultater.slice() };
+
+  $("resNavn").textContent = navn;
+  $("resScore").textContent = score;
+  $("resAf").textContent = ` / ${total}`;
+  $("resBesked").textContent = besked;
   $("prikker").innerHTML = resultater.map(r => `<i class="${r ? "" : "x"}"></i>`).join("");
+  $("resTid").textContent = stempel;
+  $("resKode").textContent = kode;
   vis("resultat");
   if (pct >= .7) setTimeout(konfetti, 250);
+
+  // "Prøv igen" åbner først efter få sekunder, så der er tid til screenshot
+  const igen = $("igen");
+  let n = 5;
+  clearInterval(tid);
+  igen.disabled = true;
+  igen.textContent = `Prøv igen (${n})`;
+  tid = setInterval(() => {
+    n--;
+    if (n <= 0) { clearInterval(tid); igen.disabled = false; igen.textContent = "Prøv igen"; }
+    else igen.textContent = `Prøv igen (${n})`;
+  }, 1000);
 }
 
 $("igen").onclick = () => { vis("start"); };
+
+/* ---------- Gem som billede ---------- */
+function rundtRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function ombryd(c, tekst, x, y, maxB, linjeH) {
+  const ord = tekst.split(" "); let linje = "";
+  ord.forEach(o => {
+    const test = linje ? linje + " " + o : o;
+    if (c.measureText(test).width > maxB && linje) { c.fillText(linje, x, y); y += linjeH; linje = o; }
+    else linje = test;
+  });
+  c.fillText(linje, x, y);
+  return y;
+}
+
+async function gemBillede() {
+  if (!sidste) return;
+  const W = 1080, H = 1350, f = '"Avenir Next","Segoe UI",system-ui,sans-serif';
+  const cv2 = document.createElement("canvas"); cv2.width = W; cv2.height = H;
+  const c = cv2.getContext("2d");
+  c.fillStyle = "#f5f3e6"; c.fillRect(0, 0, W, H);
+
+  // logo (hvis det kan indlæses)
+  try {
+    const logo = await new Promise((ok, fejl) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fejl; i.src = "images/logo.svg"; });
+    c.drawImage(logo, 60, 50, 480, 480 * 239.032 / 841.89);
+  } catch (e) {}
+
+  // kort med ramme
+  rundtRect(c, 66, 290, 948, 800, 44); c.fillStyle = "#7e1624"; c.fill();
+  rundtRect(c, 54, 278, 972, 824, 52); c.lineWidth = 10; c.strokeStyle = "#cf1321"; c.stroke();
+
+  c.textAlign = "center"; c.fillStyle = "#ffffff";
+  c.font = `700 48px ${f}`; c.fillText(sidste.navn, W / 2, 400);
+  c.font = `900 230px ${f}`; c.fillText(`${sidste.score} / ${sidste.total}`, W / 2, 650);
+  c.font = `700 46px ${f}`;
+  const slut = ombryd(c, sidste.besked, W / 2, 760, 820, 60);
+
+  // prikker
+  const pr = 16, mellem = 46, perRk = 15;
+  const rk = Math.ceil(sidste.resultater.length / perRk);
+  let y0 = Math.max(slut + 80, 900);
+  for (let r = 0; r < rk; r++) {
+    const del = sidste.resultater.slice(r * perRk, (r + 1) * perRk);
+    const startX = W / 2 - ((del.length - 1) * mellem) / 2;
+    del.forEach((ok, i) => {
+      c.beginPath(); c.arc(startX + i * mellem, y0 + r * 44, pr, 0, 6.2832);
+      c.fillStyle = ok ? "#2d8c72" : "#cf1321"; c.fill();
+      c.lineWidth = 3; c.strokeStyle = "#ffffff"; c.stroke();
+    });
+  }
+
+  // dokumentation
+  c.fillStyle = "#4e6070"; c.font = `600 38px ${f}`; c.fillText(sidste.stempel, W / 2, 1190);
+  c.fillStyle = "#7e1624"; c.font = `800 44px ${f}`; c.fillText(sidste.kode, W / 2, 1255);
+
+  cv2.toBlob(async blob => {
+    if (!blob) return;
+    const fil = new File([blob], "julequiz-score.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [fil] })) {
+      try { await navigator.share({ files: [fil], title: "Julefrokost-quiz" }); } catch (e) {}
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "julequiz-score.png";
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+  }, "image/png");
+}
+$("gem").onclick = gemBillede;
 </script>
 </body>
 </html>
