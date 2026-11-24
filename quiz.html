@@ -109,7 +109,7 @@
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 64px; font-weight: 900;
   }
-  .portraet .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .portraet .foto img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; display: block; }
   .nissehue { position: absolute; top: -50px; left: 10px; width: 120px; height: auto; transform: rotate(-6deg); pointer-events: none; }
   .naeste { margin-top: 16px; }
 
@@ -196,6 +196,9 @@
    ============================================================ */
 const QUESTIONS = [
   { q: "Hvem har været medlem af Ry Klatreklub?", options: ["Nina", "Mie", "Maria", "Martin"], answer: "Mie" },
+  { q: "Hvem tager altid det sidste stykke kage uden at spørge?", options: ["Jonas", "Thor", "Nina", "Christian"], answer: "Jonas" },
+  { q: "Hvem har det mest rodede skrivebord?", options: ["Maria", "Martin", "Mie", "Thor"], answer: "Thor" },
+  { q: "Hvem er som regel først på kontoret om morgenen?", options: ["Nina", "Jonas", "Christian", "Mie"], answer: "Christian" },
   // { q: "Næste spørgsmål her?", options: ["Nina", "Jonas", "Thor", "Christian"], answer: "Thor" },
 ];
 
