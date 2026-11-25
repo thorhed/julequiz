@@ -140,6 +140,34 @@
   .knap.sekundaer { background: var(--hvid); color: var(--brand); border: 2px solid var(--brand); box-shadow: none; }
   .knap:disabled { opacity: .5; cursor: default; }
 
+
+  /* Sudden death */
+  .score-kort .sd { margin-top: 14px; padding: 9px 12px; font-weight: 800; font-size: 16px; background: rgba(255,255,255,.14); border-radius: 10px; }
+  .score-kort .sd:empty { display: none; }
+  .knap.sudden { background: var(--gra-mork); box-shadow: 0 4px 0 #3a4856; }
+  .knap.sudden:active { box-shadow: 0 1px 0 #3a4856; }
+  .res .knap { padding: 14px 20px; font-size: 18px; }
+  .dato-felt { margin-top: 26px; }
+  .dato-raekke { display: grid; grid-template-columns: 1fr 1.7fr; gap: 10px; }
+  .dato-felt select {
+    width: 100%; font: inherit; font-size: 22px; font-weight: 700; padding: 16px 12px;
+    border: 2px solid var(--gra-lys); border-radius: 14px; background: var(--hvid); color: var(--gra-mork);
+    min-height: 60px; appearance: auto;
+  }
+  .dato-felt select:focus { outline: none; border-color: var(--bla); }
+  .dato-felt select:disabled { opacity: .7; }
+  .dato-felt input[type=date] {
+    width: 100%; font: inherit; font-size: 22px; font-weight: 700; padding: 16px;
+    border: 2px solid var(--gra-lys); border-radius: 14px; background: var(--hvid); color: var(--gra-mork);
+    min-height: 60px;
+  }
+  .dato-felt input[type=date]:focus { outline: none; border-color: var(--bla); }
+  .dato-felt input[type=date]:disabled { opacity: .7; }
+  .dato-felt .hint { font-size: 15px; margin-top: 8px; color: var(--gra-mork); }
+  .sd-res .stor-tal { font-size: 64px; font-weight: 900; color: var(--brand); line-height: 1; margin: 4px 0; letter-spacing: -.02em; }
+  .sd-res .linje { font-size: 17px; margin: 6px 0 0; }
+  .sd-res .linje b { color: var(--brand); }
+
   canvas#konfetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -195,12 +223,38 @@
       <div class="stor"><b id="resScore"></b><span id="resAf"></span></div>
       <div class="besked" id="resBesked"></div>
       <div class="prikker" id="prikker"></div>
+      <div class="sd" id="resSd"></div>
       <div class="meta"><div id="resTid"></div><div class="kode" id="resKode"></div></div>
     </div>
     <p class="opfordring">Tag et screenshot af din score som dokumentation.</p>
     <div class="knapper">
       <button class="knap sekundaer" id="gem">Gem som billede</button>
       <button class="knap" id="igen" disabled>Prøv igen</button>
+      <button class="knap sudden" id="sudden">Sudden death</button>
+    </div>
+  </section>
+
+  <!-- SUDDEN DEATH -->
+  <section class="screen" id="suddenSkaerm">
+    <div class="top"><div class="tael">Sudden death</div></div>
+    <h2>SIKA, senere kendt som Idrætssamvirket, blev stiftet i 1898 på hvilken dato?</h2>
+    <div class="dato-felt">
+      <div class="dato-raekke">
+        <select id="sdDag" aria-label="Dag"></select>
+        <select id="sdMaaned" aria-label="Måned"></select>
+      </div>
+      <div class="hint">Vælg dag og måned. Jo tættere på den rigtige dato, jo bedre.</div>
+    </div>
+    <div class="feedback sd-res" id="sdRes" aria-live="polite">
+      <p class="dom" id="sdDom"></p>
+      <div class="stor-tal" id="sdTal"></div>
+      <p class="linje" id="sdFra"></p>
+      <p class="linje" id="sdValgt"></p>
+      <p class="linje" id="sdRigtig"></p>
+    </div>
+    <div class="knapper">
+      <button class="knap" id="sdBekraeft" disabled>Bekræft svar</button>
+      <button class="knap" id="sdTilbage" style="display:none">Tilbage til score</button>
     </div>
   </section>
 </div>
@@ -384,6 +438,23 @@ function lavKode(tekst) {
   return (h >>> 0).toString(36).toUpperCase().padStart(6, "0").slice(0, 5);
 }
 
+function dageTekst(n) {
+  return n === 0 ? "præcis rigtigt!" : `${n} ${n === 1 ? "dag" : "dage"} fra det rigtige svar`;
+}
+
+function tegnKort() {
+  const s = sidste;
+  s.kode = "ISAA-" + lavKode([s.navn, s.score, s.total, s.stempel, s.sd ? s.sd.dage : ""].join("|"));
+  $("resNavn").textContent = s.navn;
+  $("resScore").textContent = s.score;
+  $("resAf").textContent = ` / ${s.total}`;
+  $("resBesked").textContent = s.besked;
+  $("prikker").innerHTML = s.resultater.map(r => `<i class="${r ? "" : "x"}"></i>`).join("");
+  $("resSd").textContent = s.sd ? `Sudden death: ${dageTekst(s.sd.dage)}` : "";
+  $("resTid").textContent = s.stempel;
+  $("resKode").textContent = s.kode;
+}
+
 function visResultat() {
   const total = QUESTIONS.length;
   const pct = score / total;
@@ -396,16 +467,10 @@ function visResultat() {
   const stempel = nu.toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" })
     + " kl. " + nu.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
   const navn = brugerNavn || "Din score";
-  const kode = "ISAA-" + lavKode([navn, score, total, stempel].join("|"));
-  sidste = { navn, score, total, besked, stempel, kode, resultater: resultater.slice() };
-
-  $("resNavn").textContent = navn;
-  $("resScore").textContent = score;
-  $("resAf").textContent = ` / ${total}`;
-  $("resBesked").textContent = besked;
-  $("prikker").innerHTML = resultater.map(r => `<i class="${r ? "" : "x"}"></i>`).join("");
-  $("resTid").textContent = stempel;
-  $("resKode").textContent = kode;
+  sidste = { navn, score, total, besked, stempel, resultater: resultater.slice(), sd: null };
+  tegnKort();
+  $("sudden").disabled = false;
+  $("sudden").textContent = "Sudden death";
   vis("resultat");
   if (pct >= .7) setTimeout(konfetti, 250);
 
@@ -478,6 +543,11 @@ async function gemBillede() {
     });
   }
 
+  if (sidste.sd) {
+    c.fillStyle = "#ffffff"; c.font = `800 38px ${f}`;
+    c.fillText("Sudden death: " + dageTekst(sidste.sd.dage), W / 2, 1050);
+  }
+
   // dokumentation
   c.fillStyle = "#4e6070"; c.font = `600 38px ${f}`; c.fillText(sidste.stempel, W / 2, 1190);
   c.fillStyle = "#7e1624"; c.font = `800 44px ${f}`; c.fillText(sidste.kode, W / 2, 1255);
@@ -495,6 +565,70 @@ async function gemBillede() {
   }, "image/png");
 }
 $("gem").onclick = gemBillede;
+
+/* ---------- Sudden death ---------- */
+const RIGTIG_DATO = Date.UTC(2000, 4, 30);   // 30. maj (året bruges ikke; 2000 er skudår, så 29. feb kan vælges)
+const MAANEDER = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+const DAGE_I = [31,29,31,30,31,30,31,31,30,31,30,31];
+const datoTekst = ms => new Date(ms).toLocaleDateString("da-DK", { day: "numeric", month: "long", timeZone: "UTC" });
+
+function fyldDag() {
+  const m = +$("sdMaaned").value, valgt = $("sdDag").value;
+  const maks = m ? DAGE_I[m - 1] : 31;
+  $("sdDag").innerHTML = '<option value="">Dag</option>' +
+    Array.from({ length: maks }, (_, i) => `<option value="${i + 1}">${i + 1}.</option>`).join("");
+  if (valgt && +valgt <= maks) $("sdDag").value = valgt;
+}
+function nulstilDato() {
+  $("sdMaaned").innerHTML = '<option value="">Måned</option>' +
+    MAANEDER.map((n, i) => `<option value="${i + 1}">${n}</option>`).join("");
+  $("sdMaaned").value = "";
+  $("sdDag").innerHTML = ""; fyldDag();
+  $("sdDag").disabled = false; $("sdMaaned").disabled = false;
+}
+const tjekDato = () => { $("sdBekraeft").disabled = !($("sdDag").value && $("sdMaaned").value); };
+$("sdMaaned").addEventListener("change", () => { fyldDag(); tjekDato(); });
+$("sdDag").addEventListener("change", tjekDato);
+nulstilDato();
+
+$("sudden").onclick = () => {
+  if (!sidste || sidste.sd) return;
+  nulstilDato();
+  $("sdRes").className = "feedback sd-res";
+  $("sdBekraeft").style.display = "";
+  $("sdBekraeft").disabled = true;
+  $("sdTilbage").style.display = "none";
+  vis("suddenSkaerm");
+};
+
+
+$("sdBekraeft").onclick = () => {
+  const m = +$("sdMaaned").value, d = +$("sdDag").value;
+  if (!m || !d) return;
+  const valgt = Date.UTC(2000, m - 1, d);
+  const diff = Math.round(Math.abs(valgt - RIGTIG_DATO) / 86400000);
+  const dage = Math.min(diff, 366 - diff);      // afstand uanset årstal (året går i ring)
+  sidste.sd = { valgt: `${m}-${d}`, dage };
+
+  $("sdDag").disabled = true; $("sdMaaned").disabled = true;
+  $("sdBekraeft").style.display = "none";
+  $("sdTilbage").style.display = "";
+  $("sdDom").textContent = dage === 0 ? "Præcis rigtigt!" : "Så tæt var du på";
+  $("sdTal").textContent = dage === 0 ? "0 dage" : `${dage} ${dage === 1 ? "dag" : "dage"}`;
+  $("sdFra").textContent = dage === 0 ? "fra det rigtige svar" : "fra det rigtige svar";
+  $("sdValgt").innerHTML = `Du svarede: <b>${datoTekst(valgt)}</b>`;
+  $("sdRigtig").innerHTML = `Rigtigt svar: <b>${datoTekst(RIGTIG_DATO)}</b>`;
+  $("sdRes").className = "feedback vis sd-res " + (dage === 0 ? "ok" : "");
+  if (dage === 0) konfetti();
+  setTimeout(() => $("sdRes").scrollIntoView({ behavior: "smooth", block: "end" }), 60);
+};
+
+$("sdTilbage").onclick = () => {
+  tegnKort();
+  $("sudden").disabled = true;
+  $("sudden").textContent = "Sudden death besvaret";
+  vis("resultat");
+};
 </script>
 </body>
 </html>
